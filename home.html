@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8">
+    <style>
+        p {
+            text-align: left;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+<div style="width: 800px;height: 600px;margin: 30px auto;text-align: center">
+    <h1>演示聊天室</h1>
+    <div style="width: 800px;border: 1px solid gray;height: 300px;">
+        <div style="width: 200px;height: 300px;float: left;text-align: left;">
+            <p><span>当前在线:</span><span id="user_num">0</span></p>
+            <div id="user_list" style="overflow: auto;">
+            </div>
+        </div>
+        <div id="msg_list" style="width: 598px;border:  1px solid gray; height: 300px;overflow: scroll;float: left;">
+        </div>
+    </div>
+    <br>
+    <textarea id="msg_box" rows="6" cols="50" onkeydown="confirm(event)"></textarea><br>
+    <input type="button" value="发送" onclick="send()">
+</div>
+</body>
+</html>
+<script type="text/javascript">
+    var ws = new WebSocket("ws://127.0.0.1:8080/ws");
+    var userID = Math.floor(Math.random()*100)
+    var roomId = 1
+    // 连接到服务器
+    ws.onopen = function () {
+        var data = "系统消息：建立连接成功";
+        sendMsg({"type":"join","roomId":roomId,"userId":userID});
+        listMsg(data);
+
+    };
+    // 接收消息
+    ws.onmessage = function (e) {
+        var msg = JSON.parse(e.data);
+        var sender;
+        switch (msg.type) {
+            case 'system':
+                sender = '系统消息: ';
+                break;
+            case 'message':
+                sender = `用户${msg.userId}消息: `;
+                break;
+        }
+        var data = sender + msg.content;
+        listMsg(data);
+    };
+    // 连接出错
+    ws.onerror = function () {
+        var data = "系统消息 : 出错了,请退出重试.";
+        listMsg(data);
+    };
+    function confirm(event) {
+        var key_num = event.keyCode;
+        if (13 == key_num) {
+            send();
+        } else {
+            return false;
+        }
+    }
+    // 发送消息
+    function send() {
+        var msg_box = document.getElementById("msg_box");
+        var content = msg_box.value;
+        var reg = new RegExp("\r\n", "g");
+        content = content.replace(reg, "");
+        var msg = {'content': content.trim(), 'type': 'message',"roomId":roomId,"userId":userID};
+        sendMsg(msg);
+        msg_box.value = '';
+    }
+    function listMsg(data) {
+        var msg_list = document.getElementById("msg_list");
+        var msg = document.createElement("p");
+        msg.innerHTML = data;
+        msg_list.appendChild(msg);
+        msg_list.scrollTop = msg_list.scrollHeight;
+    }
+    function sendMsg(msg) {
+        var data = JSON.stringify(msg);
+        ws.send(data);
+    }
+
+</script>
